@@ -57,14 +57,17 @@ def initialize_presets(context):
     presets = load_presets()
     if not presets:
         presets["Default"] = {}
+
     # Initialize prefix expand states
-    prefix_expand_states.clear()
     current_preset = context.scene.vgr_props.current_preset
     if current_preset not in presets:
         context.scene.vgr_props.current_preset = "Default"
         current_preset = "Default"
+
     for prefix in presets.get(current_preset, {}):
-        prefix_expand_states[prefix] = False
+        if prefix not in prefix_expand_states:
+            prefix_expand_states[prefix] = False
+
     # Register dynamic properties
     register_dynamic_properties(context)
 
@@ -87,17 +90,17 @@ def preset_update(self, context):
     set_current_preset(context, preset_name)
 
 class VertexGroupRenamerProperties(bpy.types.PropertyGroup):
-    preset_dropdown: bpy.props.StringProperty(
+    preset_dropdown = bpy.props.StringProperty(
         name="Presets",
         description="Choose a preset for renaming rules",
         default='Default',
         update=preset_update,
     )
-    current_preset: bpy.props.StringProperty(
+    current_preset = bpy.props.StringProperty(
         name="Current Preset",
         default='Default',
     )
-    sync_group_bone: bpy.props.BoolProperty(
+    sync_group_bone = bpy.props.BoolProperty(
         name="Sync Group and Bone Renaming",
         description="Synchronize renaming between vertex groups and armature bones",
         default=False,
@@ -372,7 +375,7 @@ class OBJECT_OT_toggle_expand_prefix(bpy.types.Operator):
     bl_idname = "object.toggle_expand_prefix"
     bl_label = "Expand/Collapse Ruleset"
 
-    prefix: bpy.props.StringProperty()
+    prefix = bpy.props.StringProperty()
 
     def execute(self, context):
         current_state = prefix_expand_states.get(self.prefix, False)
@@ -384,7 +387,7 @@ class OBJECT_OT_remove_prefix(bpy.types.Operator):
     bl_idname = "object.remove_prefix"
     bl_label = "Remove Ruleset"
 
-    prefix: bpy.props.StringProperty()
+    prefix = bpy.props.StringProperty()
 
     def execute(self, context):
         current_preset = context.scene.vgr_props.current_preset
@@ -402,9 +405,9 @@ class OBJECT_OT_rename_prefix(bpy.types.Operator):
     bl_idname = "object.rename_prefix"
     bl_label = "Rename Ruleset Prefix"
 
-    prefix: bpy.props.StringProperty()
+    prefix = bpy.props.StringProperty()
 
-    new_prefix: bpy.props.StringProperty(name="New Prefix")
+    new_prefix = bpy.props.StringProperty(name="New Prefix")
 
     def invoke(self, context, event):
         wm = context.window_manager
@@ -434,8 +437,8 @@ class OBJECT_OT_remove_rule(bpy.types.Operator):
     bl_idname = "object.remove_rule"
     bl_label = "Remove Rule"
 
-    prefix: bpy.props.StringProperty()
-    original_name: bpy.props.StringProperty()
+    prefix = bpy.props.StringProperty()
+    original_name = bpy.props.StringProperty()
 
     def execute(self, context):
         current_preset = context.scene.vgr_props.current_preset
@@ -456,10 +459,10 @@ class OBJECT_OT_add_rule(bpy.types.Operator):
     bl_idname = "object.add_rule"
     bl_label = "Add New Rule"
 
-    prefix: bpy.props.StringProperty()
+    prefix = bpy.props.StringProperty()
 
-    original_name: bpy.props.StringProperty(name="Old Name")
-    new_name: bpy.props.StringProperty(name="New Name")
+    original_name = bpy.props.StringProperty(name="Old Name")
+    new_name = bpy.props.StringProperty(name="New Name")
 
     def invoke(self, context, event):
         wm = context.window_manager
@@ -489,7 +492,7 @@ class OBJECT_OT_add_prefix(bpy.types.Operator):
     bl_idname = "object.add_prefix"
     bl_label = "(Optional) Set Ruleset's Associated Prefix for Targeted Meshes/Armatures"
 
-    new_prefix: bpy.props.StringProperty(
+    new_prefix = bpy.props.StringProperty(
         name="Enter prefix to target specific meshes/armatures.",
         description="Leave blank to apply rules to all that don't have a matching prefix with another ruleset"
     )
@@ -523,7 +526,7 @@ class OBJECT_OT_create_preset(bpy.types.Operator):
     bl_idname = "object.create_preset"
     bl_label = "Create New Preset"
 
-    new_preset_name: bpy.props.StringProperty(name="Preset Name", default="")
+    new_preset_name = bpy.props.StringProperty(name="Preset Name", default="")
 
     def execute(self, context):
         if self.new_preset_name and self.new_preset_name not in presets:
@@ -547,7 +550,7 @@ class OBJECT_OT_duplicate_preset(bpy.types.Operator):
     bl_label = "Duplicate Preset"
     bl_options = {'REGISTER', 'UNDO'}
 
-    new_preset_name: bpy.props.StringProperty(
+    new_preset_name = bpy.props.StringProperty(
         name="New Preset Name",
         description="Enter a name for the duplicated preset",
         default=""
@@ -596,7 +599,7 @@ class OBJECT_OT_rename_preset(bpy.types.Operator):
     bl_label = "Rename Preset"
     bl_options = {'REGISTER', 'UNDO'}
 
-    new_preset_name: bpy.props.StringProperty(
+    new_preset_name = bpy.props.StringProperty(
         name="New Preset Name",
         description="Enter a new name for the preset",
         default=""
@@ -674,7 +677,7 @@ class OBJECT_OT_import_preset(bpy.types.Operator):
     bl_idname = "object.import_preset"
     bl_label = "Import Preset"
 
-    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filepath = bpy.props.StringProperty(subtype="FILE_PATH")
 
     def execute(self, context):
         global presets
@@ -717,11 +720,20 @@ class OBJECT_OT_export_preset(bpy.types.Operator):
     bl_idname = "object.export_preset"
     bl_label = "Export Preset"
 
-    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filename_ext = ".json"
+
+    filepath = bpy.props.StringProperty(subtype="FILE_PATH")
+    filter_glob = bpy.props.StringProperty(
+        default="*.json",
+        options={'HIDDEN'},
+        maxlen=255,
+    )
 
     def execute(self, context):
         global presets
         try:
+            if not self.filepath.lower().endswith(".json"):
+                self.filepath += ".json"
             with open(self.filepath, 'w') as f:
                 json.dump(presets, f, indent=4)
             self.report({'INFO'}, f"Presets exported to '{self.filepath}'.")
@@ -1197,7 +1209,7 @@ class VGR_OT_select_preset(bpy.types.Operator):
     bl_idname = "vgr.select_preset"
     bl_label = "Select Preset"
 
-    preset_name: bpy.props.StringProperty()
+    preset_name = bpy.props.StringProperty()
 
     def execute(self, context):
         context.scene.vgr_props.preset_dropdown = self.preset_name
